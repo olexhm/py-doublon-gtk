@@ -1,0 +1,72 @@
+[project]
+name = "py-doublon-gtk"
+version = "0.1.0"
+description = "Find and remove duplicate files, safely."
+readme = "README.md"
+requires-python = ">=3.14"          # dictated by the system gi build (python3-gobject for 3.14)
+dependencies = ["pydantic>=2.12"]   # NOT pygobject: gi comes from the distro
+
+[project.scripts]
+py-doublon-gtk = "py_doublon_gtk.__main__:main"
+
+[dependency-groups]
+dev = ["pygobject-stubs>=2.17", "pyright>=1.1.400", "pytest>=8.3", "pytest-cov>=6.0", "ruff>=0.9"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/py_doublon_gtk"]
+
+[tool.uv]
+# pygobject-stubs declares a hard dependency on pygobject, which is sdist-only and cannot
+# build here (no gobject-introspection-devel / cairo-devel). gi comes from the distro's
+# python3-gobject via --system-site-packages instead, so this override drops that edge:
+# the marker is never satisfiable, so uv resolves pygobject to nothing.
+override-dependencies = ["pygobject; python_version < '3.0'"]
+
+[tool.ruff]
+target-version = "py314"
+line-length = 100
+src = ["src", "tests"]
+# ruff 0.16 formats Python snippets inside Markdown code fences. AGENTS.md is a spec,
+# not source: its examples are hand-wrapped and must stay byte-for-byte as written.
+extend-exclude = ["*.md"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM", "ANN", "RUF", "PTH"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/*" = ["ANN"]
+
+[tool.pyright]
+typeCheckingMode = "strict"
+venvPath = "."
+venv = ".venv"
+include = ["src", "tests"]
+# gi is a stubs-only package: the runtime module is a C extension provided by the distro,
+# so pyright can never find Python source for it.
+reportMissingModuleSource = "none"
+
+[[tool.pyright.executionEnvironments]]
+root = "src/py_doublon_gtk/ui"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+reportUnknownParameterType = "none"
+reportMissingTypeStubs = "none"
+reportAttributeAccessIssue = "none"
+
+[[tool.pyright.executionEnvironments]]
+# pytest fixtures arrive untyped, and annotating every one of them buys nothing.
+root = "tests"
+reportMissingParameterType = "none"
+reportUnknownParameterType = "none"
+reportUnknownMemberType = "none"
+reportUnknownVariableType = "none"
+reportUnknownArgumentType = "none"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "--strict-markers -q"
